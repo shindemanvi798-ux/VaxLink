@@ -1,126 +1,221 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../LanguageContext';
+import { Mic, MicOff, Send, Volume2, Square } from 'lucide-react';
 
 export default function TeammateSeams() {
-  const [activeLang, setActiveLang] = useState('hi');
-  const [recording, setRecording] = useState(false);
-  const [messages, setMessages] = useState([
-    { sender: 'bot', text: 'Namaste! Main VaxLink AI Sahayak hoon. Aap bacche ke teekakaran (vaccination) ke baare mein koi bhi sawal pooch sakte hain.' }
-  ]);
+  const { language, t } = useLanguage();
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(window.speechSynthesis);
+  const messagesEndRef = useRef(null);
 
-  const languages = [
-    { code: 'hi', name: 'हिंदी (Hindi)' },
-    { code: 'mr', name: 'मराठी (Marathi)' },
-    { code: 'ta', name: 'தமிழ் (Tamil)' },
-    { code: 'te', name: 'తెలుగు (Telugu)' },
-    { code: 'en', name: 'English' }
-  ];
+  // Initialize greeting on language change
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([{ role: 'assistant', content: t('chat_greeting') }]);
+    }
+  }, [language, t]);
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    const userMsg = input.trim();
-    setMessages((prev) => [
-      ...prev,
-      { sender: 'user', text: userMsg },
-      { sender: 'bot', text: `[Voice & AI Integration Seam]: Received query "${userMsg}" in ${activeLang.toUpperCase()}. Person 2 LLM/Voice service plugs in here.` }
-    ]);
-    setInput('');
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Map our language codes to browser Speech API language codes
+  const getSpeechLangCode = (lang) => {
+    const map = { hi: 'hi-IN', mr: 'mr-IN', en: 'en-IN' };
+    return map[lang] || 'en-US';
   };
 
-  const toggleVoice = () => {
-    setRecording(!recording);
+  // --- SPEECH TO TEXT (MIC INPUT) ---
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support voice input. Please use Chrome.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = getSpeechLangCode(language);
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      // We don't auto-send, so the user can verify the text first
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  };
+
+  // --- TEXT TO SPEECH (AUDIO OUTPUT) ---
+  const speakMessage = (text) => {
+    if (synthRef.current.speaking) {
+      synthRef.current.cancel();
+    }
+    
+    setIsSpeaking(true);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = getSpeechLangCode(language);
+    
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    synthRef.current.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    synthRef.current.cancel();
+    setIsSpeaking(false);
+  };
+
+  // --- API CALL TO BACKEND ---
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userText = input.trim();
+    setInput('');
+    
+    const newMessages = [...messages, { role: 'user', content: userText }];
+    setMessages(newMessages);
+    setIsLoading(true);
+
+    try {
+      // Send the entire chat history to our FastAPI backend
+      const response = await fetch('http://127.0.0.1:8000/chat/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages,
+          language: language
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch from API');
+
+      const data = await response.json();
+      const replyText = data.reply;
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: replyText }]);
+      
+      // Auto-read the reply out loud!
+      speakMessage(replyText);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages((prev) => [...prev, { role: 'assistant', content: "Sorry, I am having trouble connecting to the server right now." }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Multilingual Selector Container */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-            <span>🌐</span> Language Preference (Person 2 Multilingual i18n Integration)
-          </h3>
-          <span className="text-[10px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded border border-indigo-200">
-            Person 2 Plug-in Ready
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {languages.map((l) => (
-            <button
-              key={l.code}
-              onClick={() => setActiveLang(l.code)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
-                activeLang === l.code
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              {l.name}
-            </button>
-          ))}
-        </div>
+    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[600px]">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 border-b pb-2">
+        <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+          {t('nav_chat')}
+        </h2>
+        {isSpeaking && (
+          <button onClick={stopSpeaking} className="text-red-500 flex items-center gap-1 text-sm bg-red-50 px-2 py-1 rounded">
+            <Square className="w-4 h-4 fill-current" /> {t('stop_speaking')}
+          </button>
+        )}
       </div>
 
-      {/* Voice Assistant & Health Q&A AI Container */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-            <span>🎙️</span> Multilingual Voice Assistant & Health Q&A
-          </h3>
-          <span className="text-[10px] bg-purple-50 text-purple-700 font-semibold px-2 py-0.5 rounded border border-purple-200">
-            Voice-First AI Assistant
-          </span>
-        </div>
-
-        {/* Chat window */}
-        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 h-64 overflow-y-auto space-y-3 mb-4">
-          {messages.map((m, idx) => (
-            <div
-              key={idx}
-              className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl p-3 text-xs shadow-sm ${
-                  m.sender === 'user'
-                    ? 'bg-emerald-600 text-white rounded-br-none'
-                    : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
-                }`}
-              >
-                {m.text}
-              </div>
+      {/* Chat History */}
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] rounded-2xl p-3 shadow-sm relative group ${
+              msg.role === 'user' 
+                ? 'bg-emerald-600 text-white rounded-br-none' 
+                : 'bg-slate-100 text-slate-800 rounded-bl-none'
+            }`}>
+              {msg.content}
+              
+              {/* Tap to listen button on bot messages */}
+              {msg.role === 'assistant' && (
+                <button 
+                  onClick={() => speakMessage(msg.content)}
+                  className="absolute -right-8 top-2 text-slate-400 hover:text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Listen"
+                >
+                  <Volume2 className="w-5 h-5" />
+                </button>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Voice and input controls */}
-        <form onSubmit={handleSend} className="flex gap-2">
-          <button
-            type="button"
-            onClick={toggleVoice}
-            className={`p-2.5 rounded-xl text-white font-bold transition flex items-center justify-center ${
-              recording
-                ? 'bg-rose-600 animate-bounce'
-                : 'bg-indigo-600 hover:bg-indigo-700'
-            }`}
-            title="Click to speak (Voice-First Input)"
-          >
-            {recording ? '🛑 Speaking...' : '🎙️ Voice'}
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={`Ask health question in ${languages.find(l=>l.code===activeLang)?.name}...`}
-            className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition"
-          >
-            Send
-          </button>
-        </form>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-slate-100 text-slate-500 rounded-2xl rounded-bl-none p-3 text-sm italic">
+              {t('loading')}
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
+
+      {/* Input Area */}
+      <form onSubmit={handleSend} className="flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
+        
+        {/* Voice Input Button */}
+        <button
+          type="button"
+          onClick={toggleRecording}
+          className={`p-3 rounded-full transition-colors ${
+            isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+          }`}
+          title={t('speak')}
+        >
+          {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+        </button>
+
+        {/* Text Input */}
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={isRecording ? "Listening..." : t('type_message')}
+          className="flex-1 bg-transparent px-2 py-2 outline-none text-slate-700"
+          disabled={isLoading}
+        />
+
+        {/* Send Button */}
+        <button
+          type="submit"
+          disabled={!input.trim() || isLoading}
+          className="p-3 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+        >
+          <Send className="w-5 h-5" />
+        </button>
+      </form>
     </div>
   );
 }
