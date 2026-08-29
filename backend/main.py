@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.endpoints import auth, children, camps, chat
+from app.api.endpoints import auth, children, camps, chat, consent
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -29,5 +29,6 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(children.router, prefix="/children", tags=["Children & Vaccines"])
 app.include_router(camps.router, prefix="/camps", tags=["Camps & Bookings"])
 app.include_router(chat.router, prefix="/chat", tags=["AI Assistant"])
+app.include_router(consent.router, prefix="/consent", tags=["Privacy & DPDP"])
 
 # We will add the other routers (children, camps, etc.) here as we build them.
