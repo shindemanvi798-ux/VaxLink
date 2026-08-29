@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.endpoints import auth, children
+from app.api.endpoints import auth, children, camps, chat
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -27,5 +27,7 @@ def health_check():
 # Register all our modular API routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(children.router, prefix="/children", tags=["Children & Vaccines"])
+app.include_router(camps.router, prefix="/camps", tags=["Camps & Bookings"])
+app.include_router(chat.router, prefix="/chat", tags=["AI Assistant"])
 
 # We will add the other routers (children, camps, etc.) here as we build them.
