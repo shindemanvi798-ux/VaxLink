@@ -1,16 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.endpoints import auth, children, camps, chat, consent
+from app.routes import children, camps, bookings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend API for Saathi - Immunization & Health Companion",
-    version="2.0.0" # Bumping to 2.0.0 for the rewrite
+    version="2.0.0"
 )
 
 # Enable CORS for the frontend to communicate with this backend
-# For the pilot, we allow all origins. In production, restrict this to your Vercel/Netlify domain.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,16 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root health check endpoint (useful for Render/Railway to know the app is alive)
+# Root health check endpoint
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME}
 
-# Register all our modular API routers
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(children.router, prefix="/children", tags=["Children & Vaccines"])
-app.include_router(camps.router, prefix="/camps", tags=["Camps & Bookings"])
-app.include_router(chat.router, prefix="/chat", tags=["AI Assistant"])
-app.include_router(consent.router, prefix="/consent", tags=["Privacy & DPDP"])
-
-# We will add the other routers (children, camps, etc.) here as we build them.
+# Register all our in-memory/demo API routers with /api prefix
+app.include_router(children.router, prefix="/api")
+app.include_router(camps.router, prefix="/api")
+app.include_router(bookings.router, prefix="/api")
