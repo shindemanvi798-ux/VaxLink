@@ -1,11 +1,14 @@
 import React from 'react';
+import { useLanguage } from '../LanguageContext';
 
 export default function Navigation({ activeTab, setActiveTab }) {
+  const { t } = useLanguage();
+
   const tabs = [
-    { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'schedule', label: 'Schedule', icon: '📋' },
-    { id: 'camps', label: 'Find Camps', icon: '🏥' },
-    { id: 'assist', label: 'Voice & AI', icon: '🎙️' }
+    { id: 'home', label: t('nav_home'), icon: '🏠' },
+    { id: 'schedule', label: t('nav_schedule'), icon: '📋' },
+    { id: 'camps', label: t('nav_camps'), icon: '🏥' },
+    { id: 'assist', label: t('nav_chat'), icon: '🎙️' }
   ];
 
   return (

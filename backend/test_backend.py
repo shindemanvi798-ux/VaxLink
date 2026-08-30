@@ -50,10 +50,54 @@ def test_booking_flow():
     assert "reference_code" in data
     print("[PASS] Booking flow and confirmation passed")
 
+def test_chatbot():
+    # 1. Test English greeting
+    payload_en = {
+        "messages": [
+            {"role": "user", "content": "Hello Saathi, tell me about OPV vaccine."}
+        ],
+        "language": "en"
+    }
+    res_en = client.post("/api/chat/", json=payload_en)
+    assert res_en.status_code == 200
+    data_en = res_en.json()
+    assert "reply" in data_en
+    assert "Oral Polio Vaccine" in data_en["reply"] or "OPV" in data_en["reply"]
+    print("[PASS] Chatbot EN passed")
+
+    # 2. Test Hindi greeting
+    payload_hi = {
+        "messages": [
+            {"role": "user", "content": "नमस्ते साथी, ओपीवी टीका क्या है?"}
+        ],
+        "language": "hi"
+    }
+    res_hi = client.post("/api/chat/", json=payload_hi)
+    assert res_hi.status_code == 200
+    data_hi = res_hi.json()
+    assert "reply" in data_hi
+    assert "ओरल पोलियो" in data_hi["reply"] or "नमस्ते" in data_hi["reply"]
+    print("[PASS] Chatbot HI passed")
+
+    # 3. Test Marathi greeting
+    payload_mr = {
+        "messages": [
+            {"role": "user", "content": "नमस्कार, ताप बद्दल सांगा"}
+        ],
+        "language": "mr"
+    }
+    res_mr = client.post("/api/chat/", json=payload_mr)
+    assert res_mr.status_code == 200
+    data_mr = res_mr.json()
+    assert "reply" in data_mr
+    assert "ताप" in data_mr["reply"] or "नमस्कार" in data_mr["reply"]
+    print("[PASS] Chatbot MR passed")
+
 if __name__ == "__main__":
     test_health()
     test_list_children()
     test_child_schedule()
     test_camps_and_crowd()
     test_booking_flow()
+    test_chatbot()
     print("\nALL BACKEND VERIFICATION TESTS PASSED SUCCESSFULLY!")

@@ -9,8 +9,9 @@ export const translations = {
     
     // Navigation
     nav_home: "Home",
-    nav_camps: "Camps",
-    nav_chat: "Chat",
+    nav_schedule: "Schedule",
+    nav_camps: "Find Camps",
+    nav_chat: "Voice & AI",
     
     // Auth & Consent
     phone_number: "Phone Number",
@@ -50,8 +51,9 @@ export const translations = {
     
     // Navigation
     nav_home: "होम",
-    nav_camps: "कैंप",
-    nav_chat: "मदद",
+    nav_schedule: "समय-सारणी",
+    nav_camps: "कैंप खोजें",
+    nav_chat: "आवाज और एआई",
     
     // Auth & Consent
     phone_number: "फोन नंबर",
@@ -91,8 +93,9 @@ export const translations = {
     
     // Navigation
     nav_home: "मुख्यपृष्ठ",
-    nav_camps: "शिबिरे",
-    nav_chat: "मदत",
+    nav_schedule: "वेळापत्रक",
+    nav_camps: "शिबिरे शोधा",
+    nav_chat: "आवाज आणि एआय",
     
     // Auth & Consent
     phone_number: "फोन नंबर",
